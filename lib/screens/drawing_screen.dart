@@ -6,6 +6,8 @@ import '../models/floor_plan.dart';
 class DrawingScreen extends StatelessWidget {
   final SaveLoadService saveLoadService = SaveLoadService();
 
+  DrawingScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,16 +20,18 @@ class DrawingScreen extends StatelessWidget {
               // Example: Save lines from the canvas (implement fetching drawn lines)
               final plan = FloorPlan([]);
               await saveLoadService.savePlan(plan);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Floor plan saved!')),
-              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Floor plan saved!')),
+                );
+              }
             },
           ),
           IconButton(
             icon: Icon(Icons.folder_open),
             onPressed: () async {
               final plan = await saveLoadService.loadPlan();
-              if (plan != null) {
+              if (plan != null && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Floor plan loaded!')),
                 );

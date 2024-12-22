@@ -17,6 +17,7 @@ class _WebGLViewerState extends State<WebGLViewer> {
 
   @override
   void initState() {
+    print("Iniciando Floorplan designer");
     super.initState();
     initializeFlutterGl();
   }
