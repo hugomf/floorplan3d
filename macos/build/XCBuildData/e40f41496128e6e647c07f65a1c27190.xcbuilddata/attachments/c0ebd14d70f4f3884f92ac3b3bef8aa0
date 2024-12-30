@@ -1,0 +1,5 @@
+ extern const unsigned char flutter_gl_macosVersionString[];
+ extern const double flutter_gl_macosVersionNumber;
+
+ const unsigned char flutter_gl_macosVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:flutter_gl_macos  PROJECT:Pods-1" "\n";
+ const double flutter_gl_macosVersionNumber __attribute__ ((used)) = (double)1.;

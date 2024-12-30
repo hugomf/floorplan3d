@@ -1,0 +1,73 @@
+{
+  "buildCommand" : {
+    "command" : "prepareForIndexing",
+    "enableIndexBuildArena" : false,
+    "targets" : null
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e989d8b2146a8145768218b852a9444a007"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e98312b4bc59bbbe2c06c205bf4da6737f5"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e98483832d3c820398e9d40e1a6904b03fe"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e9812667b27d3b185479e2740d5c91fad2e"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e98c291abc6919b2940e47f038fad8ad7ac"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e9830037b09fee48cfce1f8562d753688c8"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e987ea64ee8d53085bf9edd1a57aaf8cbb5"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e981a6fd1d5d5bbcfd24b74dbfd60f062cc"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e988efdc4dd0ac29b43123295eca853f4ed"
+    },
+    {
+      "guid" : "bfdfe7dc352907fc980b868725387e987c93e943aa0a38b5f6684beaf6b4a3a1"
+    }
+  ],
+  "containerPath" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/Pods/Pods.xcodeproj",
+  "continueBuildingAfterErrors" : true,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "",
+      "buildProductsPath" : "",
+      "derivedDataPath" : "/Users/hugo/Library/Developer/Xcode/DerivedData",
+      "indexDataStoreFolderPath" : "/Users/hugo/Library/Developer/Xcode/DerivedData/Pods-ckvtjqyzzujfowgpbqbcrvtbhhiq/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/hugo/Library/Developer/Xcode/DerivedData/Pods-ckvtjqyzzujfowgpbqbcrvtbhhiq/Index.noindex/PrecompiledHeaders",
+      "pchPath" : ""
+    },
+    "configurationName" : "Release",
+    "overrides" : {
+      "synthesized" : {
+        "table" : {
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "NO",
+          "ONLY_ACTIVE_ARCH" : "YES"
+        }
+      }
+    }
+  },
+  "qos" : "default",
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : true,
+  "useImplicitDependencies" : false,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : false
+}

@@ -1,0 +1,23 @@
+{
+  'version': 0,
+  'use-external-names': 'false',
+  'case-sensitive': 'false',
+  'roots': [{
+    'type': 'directory',
+    'name': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Release/audioplayers/audioplayers.framework/Modules"
+    'contents': [{
+      'type': 'file',
+      'name': "module.modulemap",
+      'external-contents': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/audioplayers.build/unextended-module.modulemap",
+    }]
+    },
+    {
+    'type': 'directory',
+    'name': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Release/audioplayers/audioplayers.framework/Headers"
+    'contents': [{
+      'type': 'file',
+      'name': "audioplayers-Swift.h",
+      'external-contents': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/audioplayers.build/unextended-interface-header.h",
+    }]
+    }]
+}

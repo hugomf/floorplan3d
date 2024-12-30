@@ -1,0 +1,15 @@
+{
+  "" : {
+    "const-values" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx-master.swiftconstvalues",
+    "dependencies" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx-master.d",
+    "diagnostics" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx-master.dia",
+    "emit-module-dependencies" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx-master-emit-module.dia",
+    "swift-dependencies" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx-master.swiftdeps"
+  },
+  "/Users/hugo/Projects/flutter/floorplan_3d/macos/Pods/three3d_egl_osx/three3d_egl_osx/Classes/three3d_egl_osx.swift" : {
+    "index-unit-output-path" : "/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx.o",
+    "llvm-bc" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx.bc",
+    "object" : "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/Objects-normal/arm64/three3d_egl_osx.o"
+  }
+}

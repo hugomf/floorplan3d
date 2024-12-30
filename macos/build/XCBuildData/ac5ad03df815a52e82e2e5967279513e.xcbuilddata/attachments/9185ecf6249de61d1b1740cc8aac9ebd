@@ -1,0 +1,23 @@
+{
+  'version': 0,
+  'use-external-names': 'false',
+  'case-sensitive': 'false',
+  'roots': [{
+    'type': 'directory',
+    'name': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Release/flutter_gl_macos/flutter_gl_macos.framework/Modules"
+    'contents': [{
+      'type': 'file',
+      'name': "module.modulemap",
+      'external-contents': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/flutter_gl_macos.build/unextended-module.modulemap",
+    }]
+    },
+    {
+    'type': 'directory',
+    'name': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Release/flutter_gl_macos/flutter_gl_macos.framework/Headers"
+    'contents': [{
+      'type': 'file',
+      'name': "flutter_gl_macos-Swift.h",
+      'external-contents': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/flutter_gl_macos.build/unextended-interface-header.h",
+    }]
+    }]
+}

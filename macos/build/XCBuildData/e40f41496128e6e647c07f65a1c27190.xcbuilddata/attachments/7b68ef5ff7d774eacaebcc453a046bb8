@@ -1,0 +1,23 @@
+{
+  'version': 0,
+  'use-external-names': 'false',
+  'case-sensitive': 'false',
+  'roots': [{
+    'type': 'directory',
+    'name': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Release/three3d_egl_osx/three3d_egl_osx.framework/Modules"
+    'contents': [{
+      'type': 'file',
+      'name': "module.modulemap",
+      'external-contents': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/unextended-module.modulemap",
+    }]
+    },
+    {
+    'type': 'directory',
+    'name': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Release/three3d_egl_osx/three3d_egl_osx.framework/Headers"
+    'contents': [{
+      'type': 'file',
+      'name': "three3d_egl_osx-Swift.h",
+      'external-contents': "/Users/hugo/Projects/flutter/floorplan_3d/macos/build/Pods.build/Release/three3d_egl_osx.build/unextended-interface-header.h",
+    }]
+    }]
+}
