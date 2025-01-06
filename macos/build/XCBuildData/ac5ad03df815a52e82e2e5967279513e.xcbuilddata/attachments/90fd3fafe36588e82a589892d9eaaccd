@@ -1,5 +1,0 @@
- extern const unsigned char three3d_egl_osxVersionString[];
- extern const double three3d_egl_osxVersionNumber;
-
- const unsigned char three3d_egl_osxVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:three3d_egl_osx  PROJECT:Pods-1" "\n";
- const double three3d_egl_osxVersionNumber __attribute__ ((used)) = (double)1.;

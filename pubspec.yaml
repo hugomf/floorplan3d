@@ -1,4 +1,4 @@
-name: floorplan_3d
+name: wall_drawing_tool
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.5.4
+  sdk: ^3.6.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -30,23 +30,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  provider: ^6.0.0   # State management
-  path_provider: ^2.0.12 # For saving/loading files
-  json_serializable: ^6.0.2 # For saving floor plans
-
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  flutter_gl: ^0.0.21
-  collection: ^1.19.0
-  uuid: ^3.0.7
-  flutter_unity_widget: ^2022.2.1
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  audioplayers: ^0.20.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

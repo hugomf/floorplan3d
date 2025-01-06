@@ -26,7 +26,6 @@ class WallModel {
   Offset? lastPosition;
   bool isResizing = false; // Track if a wall is being resized
   bool isResizingLeftEdge = false; // Track if the left edge is being resized
-  Offset? dragStartPosition; // Track the starting position of the drag
 
   /// Adds a wall at the given position.
   void addWall(Offset position) {
@@ -82,33 +81,6 @@ class WallModel {
     }
 
     lastPosition = newPosition; // Update the last position for future calculations
-  }
-
-  /// Starts drawing a new wall.
-  void startDrawingWall(Offset position) {
-    dragStartPosition = position;
-  }
-
-  /// Updates the wall being drawn.
-  void updateDrawingWall(Offset position) {
-    if (dragStartPosition == null) return;
-
-    final dx = position.dx - dragStartPosition!.dx;
-    final dy = position.dy - dragStartPosition!.dy;
-    final width = dx.abs();
-    final height = Wall.height;
-
-    if (walls.isEmpty || selectedIndex == null) {
-      walls.add(Wall(dragStartPosition!, width: width));
-      selectedIndex = walls.length - 1;
-    } else {
-      walls[selectedIndex!].width = width;
-    }
-  }
-
-  /// Finishes drawing the wall.
-  void finishDrawingWall() {
-    dragStartPosition = null;
   }
 }
 
@@ -187,7 +159,7 @@ class _WallCombinerScreenState extends State<WallCombinerScreen> {
             onTapDown: _isAddMode
                 ? (details) {
                     setState(() {
-                      _wallModel.startDrawingWall(details.localPosition);
+                      _wallModel.addWall(details.localPosition);
                       _updatePainterKey(); // Force rebuild
                     });
                   }
@@ -219,46 +191,32 @@ class _WallCombinerScreenState extends State<WallCombinerScreen> {
                     _updatePainterKey(); // Force rebuild
                   }
                 : null,
-            onPanUpdate: _isAddMode
+            onPanUpdate: !_isAddMode
+                ? (details) {
+                    if (_wallModel.isResizing) {
+                      setState(() {
+                        _wallModel.resizeWall(details.localPosition);
+                        _updatePainterKey(); // Force rebuild
+                      });
+                    } else {
+                      setState(() {
+                        _wallModel.updateWallPosition(details.localPosition);
+                        _updatePainterKey(); // Force rebuild
+                      });
+                    }
+                  }
+                : null,
+            onPanEnd: !_isAddMode
                 ? (details) {
                     setState(() {
-                      _wallModel.updateDrawingWall(details.localPosition);
+                      _wallModel.selectedIndex = null;
+                      _wallModel.lastPosition = null;
+                      _wallModel.isResizing = false;
+                      _wallModel.isResizingLeftEdge = false;
                       _updatePainterKey(); // Force rebuild
                     });
                   }
-                : !_isAddMode
-                    ? (details) {
-                        if (_wallModel.isResizing) {
-                          setState(() {
-                            _wallModel.resizeWall(details.localPosition);
-                            _updatePainterKey(); // Force rebuild
-                          });
-                        } else {
-                          setState(() {
-                            _wallModel.updateWallPosition(details.localPosition);
-                            _updatePainterKey(); // Force rebuild
-                          });
-                        }
-                      }
-                    : null,
-            onPanEnd: _isAddMode
-                ? (details) {
-                    setState(() {
-                      _wallModel.finishDrawingWall();
-                      _updatePainterKey(); // Force rebuild
-                    });
-                  }
-                : !_isAddMode
-                    ? (details) {
-                        setState(() {
-                          _wallModel.selectedIndex = null;
-                          _wallModel.lastPosition = null;
-                          _wallModel.isResizing = false;
-                          _wallModel.isResizingLeftEdge = false;
-                          _updatePainterKey(); // Force rebuild
-                        });
-                      }
-                    : null,
+                : null,
             onPanCancel: () {
               setState(() {
                 _cursor = SystemMouseCursors.basic; // Reset cursor on cancel

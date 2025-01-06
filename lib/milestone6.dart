@@ -22,9 +22,6 @@ class WallDrawingToolState extends State<WallDrawingTool> {
   Offset? startPoint;
   Offset? endPoint;
   Wall? selectedWall; // Track the selected wall
-  Offset? dragStartPoint; // Track the start point of the drag
-  bool isResizingLeft = false; // Track if the left handler is being dragged
-  bool isResizingRight = false; // Track if the right handler is being dragged
 
   @override
   Widget build(BuildContext context) {
@@ -52,18 +49,17 @@ class WallDrawingToolState extends State<WallDrawingTool> {
                   child: const DiagonalPattern(),
                 ),
 
-              // Layer 4: Detector of gestures for drawing, moving, and resizing walls
+              // Layer 4: Gesture detector for drawing walls
               GestureDetector(
                 onPanStart: _onPanStart,
                 onPanUpdate: _onPanUpdate,
                 onPanEnd: _onPanEnd,
+                onTapUp: _onTapUp, // Detect taps
                 child: CustomPaint(
                   painter: WallPainter(
                     walls: walls,
                     currentWall: _getCurrentWall(),
-                    selectedWall: selectedWall,
-                    isResizingLeft: isResizingLeft,
-                    isResizingRight: isResizingRight,
+                    selectedWall: selectedWall, // Pass the selected wall
                   ),
                   child: Container(),
                 ),
@@ -76,85 +72,21 @@ class WallDrawingToolState extends State<WallDrawingTool> {
   }
 
   void _onPanStart(DragStartDetails details) {
-    final tapPosition = details.localPosition;
-
-    if (selectedWall != null) {
-      // Check if the user clicked on the left or right handler
-      final leftHandlerPosition = _getHandlerPosition(selectedWall!, isLeft: true);
-      final rightHandlerPosition = _getHandlerPosition(selectedWall!, isLeft: false);
-
-      if ((tapPosition - leftHandlerPosition).distance < 10) {
-        // Clicked the left handler
-        setState(() {
-          isResizingLeft = true;
-          dragStartPoint = tapPosition;
-        });
-        return;
-      } else if ((tapPosition - rightHandlerPosition).distance < 10) {
-        // Clicked the right handler
-        setState(() {
-          isResizingRight = true;
-          dragStartPoint = tapPosition;
-        });
-        return;
-      }
-    }
-
-    // Check if the user clicked inside a wall
-    for (var wall in walls) {
-      if (_isPointOnWall(tapPosition, wall)) {
-        setState(() {
-          selectedWall = wall; // Select the wall
-          dragStartPoint = tapPosition; // Store the drag start point
-        });
-        return;
-      }
-    }
-
-    // If no wall is clicked, start drawing a new wall
     setState(() {
-      startPoint = tapPosition;
-      endPoint = tapPosition;
-      selectedWall = null; // Deselect any selected wall
+      startPoint = details.localPosition;
+      endPoint = details.localPosition;
+      selectedWall = null; // Deselect any selected wall when drawing a new one
     });
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
-    final dragUpdatePosition = details.localPosition;
-
-    if (selectedWall != null) {
-      if (isResizingLeft) {
-        // Resize the wall from the left handler
-        setState(() {
-          selectedWall!.start = dragUpdatePosition;
-        });
-      } else if (isResizingRight) {
-        // Resize the wall from the right handler
-        setState(() {
-          selectedWall!.end = dragUpdatePosition;
-        });
-      } else if (dragStartPoint != null) {
-        // Move the selected wall
-        final dx = dragUpdatePosition.dx - dragStartPoint!.dx;
-        final dy = dragUpdatePosition.dy - dragStartPoint!.dy;
-
-        setState(() {
-          selectedWall!.start = Offset(selectedWall!.start.dx + dx, selectedWall!.start.dy + dy);
-          selectedWall!.end = Offset(selectedWall!.end.dx + dx, selectedWall!.end.dy + dy);
-          dragStartPoint = dragUpdatePosition;
-        });
-      }
-    } else if (startPoint != null && endPoint != null) {
-      // Update the end point of the wall being drawn
-      setState(() {
-        endPoint = dragUpdatePosition;
-      });
-    }
+    setState(() {
+      endPoint = details.localPosition;
+    });
   }
 
   void _onPanEnd(DragEndDetails details) {
     if (startPoint != null && endPoint != null) {
-      // Add the new wall to the list
       final distance = (endPoint! - startPoint!).distance;
       if (distance > 5.0) {
         setState(() {
@@ -164,12 +96,24 @@ class WallDrawingToolState extends State<WallDrawingTool> {
       startPoint = null;
       endPoint = null;
     }
+  }
 
-    // Reset the drag state
+  void _onTapUp(TapUpDetails details) {
+    final tapPosition = details.localPosition;
+
+    // Check if the tap is on any wall
+    for (var wall in walls) {
+      if (_isPointOnWall(tapPosition, wall)) {
+        setState(() {
+          selectedWall = wall; // Select the wall
+        });
+        return;
+      }
+    }
+
+    // If no wall is tapped, deselect the current wall
     setState(() {
-      dragStartPoint = null;
-      isResizingLeft = false;
-      isResizingRight = false;
+      selectedWall = null;
     });
   }
 
@@ -188,35 +132,6 @@ class WallDrawingToolState extends State<WallDrawingTool> {
     return perpendicularDistance.abs() < 10.0; // Tolerance for selection
   }
 
-  Offset _getHandlerPosition(Wall wall, {required bool isLeft}) {
-    final dx = wall.end.dx - wall.start.dx;
-    final dy = wall.end.dy - wall.start.dy;
-    final angle = math.atan2(dy, dx);
-
-    final wallLength = math.sqrt(dx * dx + dy * dy);
-    final wallHeight = 10.0;
-
-    final center = Offset(
-      (wall.start.dx + wall.end.dx) / 2,
-      (wall.start.dy + wall.end.dy) / 2,
-    );
-
-    final rect = Rect.fromLTWH(
-      -wallLength / 2,
-      -wallHeight / 2,
-      wallLength,
-      wallHeight,
-    );
-
-    final handlerOffset = isLeft ? Offset(-rect.width / 2, 0) : Offset(rect.width / 2, 0);
-
-    final matrix = Matrix4.identity()
-      ..translate(center.dx, center.dy)
-      ..rotateZ(angle);
-
-    return MatrixUtils.transformPoint(matrix, handlerOffset);
-  }
-
   Wall? _getCurrentWall() {
     if (startPoint != null && endPoint != null) {
       return Wall(startPoint!, endPoint!);
@@ -226,8 +141,8 @@ class WallDrawingToolState extends State<WallDrawingTool> {
 }
 
 class Wall {
-  Offset start;
-  Offset end;
+  final Offset start;
+  final Offset end;
 
   Wall(this.start, this.end);
 }
@@ -279,17 +194,9 @@ class WallClipper extends CustomClipper<Path> {
 class WallPainter extends CustomPainter {
   final List<Wall> walls;
   final Wall? currentWall;
-  final Wall? selectedWall;
-  final bool isResizingLeft;
-  final bool isResizingRight;
+  final Wall? selectedWall; // Add selected wall
 
-  WallPainter({
-    required this.walls,
-    this.currentWall,
-    this.selectedWall,
-    this.isResizingLeft = false,
-    this.isResizingRight = false,
-  });
+  WallPainter({required this.walls, this.currentWall, this.selectedWall});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -350,7 +257,7 @@ class WallPainter extends CustomPainter {
         ..color = Colors.blue
         ..style = PaintingStyle.fill;
 
-      const handlerSize = 5.0; // Size of the handler squares
+      const handlerSize = 8.0; // Size of the handler squares
 
       // Draw handler at the start of the wall
       canvas.drawRect(
@@ -497,11 +404,7 @@ class WallPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant WallPainter oldDelegate) {
-    return oldDelegate.walls != walls ||
-        oldDelegate.currentWall != currentWall ||
-        oldDelegate.selectedWall != selectedWall ||
-        oldDelegate.isResizingLeft != isResizingLeft ||
-        oldDelegate.isResizingRight != isResizingRight;
+    return oldDelegate.walls != walls || oldDelegate.currentWall != currentWall || oldDelegate.selectedWall != selectedWall;
   }
 }
 
