@@ -5,7 +5,7 @@ void main() {
   runApp(
     MaterialApp(
       home: const WallDrawingTool(),
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: false, // Optional: Remove debug banner
     ),
   );
 }
@@ -19,13 +19,14 @@ class WallDrawingTool extends StatefulWidget {
 
 class WallDrawingToolState extends State<WallDrawingTool> {
   List<Wall> walls = [];
+  List<Path> mergedWalls = []; // Store merged walls as Path objects
   Offset? startPoint;
   Offset? endPoint;
-  Wall? selectedWall;
-  Offset? dragStartPoint;
-  bool isResizingLeft = false;
-  bool isResizingRight = false;
-  bool isDragging = false; // Track if a wall is being dragged
+  Wall? selectedWall; // Track the selected wall
+  Offset? dragStartPoint; // Track the start point of the drag
+  bool isResizingLeft = false; // Track if the left handler is being dragged
+  bool isResizingRight = false; // Track if the right handler is being dragged
+  bool enableWallMerging = true; // Feature flag to toggle wall merging
 
   @override
   Widget build(BuildContext context) {
@@ -61,11 +62,12 @@ class WallDrawingToolState extends State<WallDrawingTool> {
                 child: CustomPaint(
                   painter: WallPainter(
                     walls: walls,
+                    mergedWalls: mergedWalls,
                     currentWall: _getCurrentWall(),
                     selectedWall: selectedWall,
                     isResizingLeft: isResizingLeft,
                     isResizingRight: isResizingRight,
-                    isDragging: isDragging, // Pass dragging state
+                    enableWallMerging: enableWallMerging,
                   ),
                   child: Container(),
                 ),
@@ -108,7 +110,6 @@ class WallDrawingToolState extends State<WallDrawingTool> {
         setState(() {
           selectedWall = wall; // Select the wall
           dragStartPoint = tapPosition; // Store the drag start point
-          isDragging = true; // Start dragging
         });
         return;
       }
@@ -119,7 +120,6 @@ class WallDrawingToolState extends State<WallDrawingTool> {
       startPoint = tapPosition;
       endPoint = tapPosition;
       selectedWall = null; // Deselect any selected wall
-      isDragging = true; // Start dragging
     });
   }
 
@@ -163,6 +163,9 @@ class WallDrawingToolState extends State<WallDrawingTool> {
       if (distance > 5.0) {
         setState(() {
           walls.add(Wall(startPoint!, endPoint!));
+          if (enableWallMerging) {
+            _mergeWalls(); // Merge walls if the feature is enabled
+          }
         });
       }
       startPoint = null;
@@ -174,8 +177,52 @@ class WallDrawingToolState extends State<WallDrawingTool> {
       dragStartPoint = null;
       isResizingLeft = false;
       isResizingRight = false;
-      isDragging = false; // Stop dragging
     });
+  }
+
+  void _mergeWalls() {
+    if (walls.isEmpty) return;
+
+    // Create a list of paths from the walls
+    List<Path> wallPaths = walls.map((wall) {
+      final dx = wall.end.dx - wall.start.dx;
+      final dy = wall.end.dy - wall.start.dy;
+      final angle = math.atan2(dy, dx);
+
+      final wallLength = math.sqrt(dx * dx + dy * dy);
+      final wallHeight = 10.0;
+
+      final center = Offset(
+        (wall.start.dx + wall.end.dx) / 2,
+        (wall.start.dy + wall.end.dy) / 2,
+      );
+
+      final rect = Rect.fromLTWH(
+        -wallLength / 2,
+        -wallHeight / 2,
+        wallLength,
+        wallHeight,
+      );
+
+      Path path = Path()..addRect(rect);
+
+      // Transform the path
+      final matrix = Matrix4.identity()
+        ..translate(center.dx, center.dy)
+        ..rotateZ(angle);
+      path = path.transform(matrix.storage);
+
+      return path;
+    }).toList();
+
+    // Merge all paths into one using Path.combine
+    Path combinedPath = wallPaths.first;
+    for (int i = 1; i < wallPaths.length; i++) {
+      combinedPath = Path.combine(PathOperation.union, combinedPath, wallPaths[i]);
+    }
+
+    // Update the mergedWalls list
+    mergedWalls = [combinedPath];
   }
 
   bool _isPointOnWall(Offset point, Wall wall) {
@@ -283,19 +330,21 @@ class WallClipper extends CustomClipper<Path> {
 
 class WallPainter extends CustomPainter {
   final List<Wall> walls;
+  final List<Path> mergedWalls;
   final Wall? currentWall;
   final Wall? selectedWall;
   final bool isResizingLeft;
   final bool isResizingRight;
-  final bool isDragging; // Track if dragging is active
+  final bool enableWallMerging;
 
   WallPainter({
     required this.walls,
+    required this.mergedWalls,
     this.currentWall,
     this.selectedWall,
     this.isResizingLeft = false,
     this.isResizingRight = false,
-    this.isDragging = false,
+    this.enableWallMerging = true,
   });
 
   @override
@@ -305,127 +354,92 @@ class WallPainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
-    // Merge all walls, including the current wall being dragged
-    Path mergedPath = Path();
-    for (var wall in walls) {
-      Path wallPath = _getWallPath(wall);
-      mergedPath = Path.combine(PathOperation.union, mergedPath, wallPath);
+    // Draw individual walls if merging is disabled
+    if (!enableWallMerging) {
+      for (var wall in walls) {
+        _drawWall(canvas, wall, paint, wall == selectedWall);
+        _drawMeasurementGuides(canvas, wall);
+      }
+    }
+
+    // Draw merged walls if merging is enabled
+    if (enableWallMerging && mergedWalls.isNotEmpty) {
+      for (var path in mergedWalls) {
+        canvas.drawPath(path, paint);
+      }
     }
 
     if (currentWall != null) {
-      Path currentWallPath = _getWallPath(currentWall!);
-      mergedPath = Path.combine(PathOperation.union, mergedPath, currentWallPath);
+      _drawWall(canvas, currentWall!, paint, false);
+      _drawMeasurementGuides(canvas, currentWall!);
     }
+  }
 
-    // Draw the merged path
-    canvas.drawPath(mergedPath, paint);
+  void _drawWall(Canvas canvas, Wall wall, Paint paint, bool isSelected) {
+    final dx = wall.end.dx - wall.start.dx;
+    final dy = wall.end.dy - wall.start.dy;
+    final angle = math.atan2(dy, dx);
 
-    // Draw the selected wall with highlights and handlers
-    if (selectedWall != null) {
+    final wallLength = math.sqrt(dx * dx + dy * dy);
+    final wallHeight = 10.0;
+
+    final center = Offset(
+      (wall.start.dx + wall.end.dx) / 2,
+      (wall.start.dy + wall.end.dy) / 2,
+    );
+
+    final rect = Rect.fromLTWH(
+      -wallLength / 2,
+      -wallHeight / 2,
+      wallLength,
+      wallHeight,
+    );
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+
+    // Change color if the wall is selected
+    if (isSelected) {
       final selectedPaint = Paint()
         ..color = Colors.blue
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
-
-      // Draw the selected wall with a different color
-      Path selectedPath = _getWallPath(selectedWall!);
-      canvas.drawPath(selectedPath, selectedPaint);
-
-      // Draw handlers (small filled squares) at the edges if the wall is selected
-      if (!isDragging) { // Only draw handlers when not dragging
-        final handlerPaint = Paint()
-          ..color = Colors.blue
-          ..style = PaintingStyle.fill;
-
-        const handlerSize = 5.0; // Size of the handler squares
-
-        // Draw handler at the start of the wall
-        canvas.drawRect(
-          Rect.fromCenter(
-            center: _getHandlerPosition(selectedWall!, isLeft: true),
-            width: handlerSize,
-            height: handlerSize,
-          ),
-          handlerPaint,
-        );
-
-        // Draw handler at the end of the wall
-        canvas.drawRect(
-          Rect.fromCenter(
-            center: _getHandlerPosition(selectedWall!, isLeft: false),
-            width: handlerSize,
-            height: handlerSize,
-          ),
-          handlerPaint,
-        );
-      }
+      canvas.drawRect(rect, selectedPaint);
+    } else {
+      canvas.drawRect(rect, paint);
     }
 
-    // Hide measurement guides during dragging
-    if (!isDragging && selectedWall != null) {
-      _drawMeasurementGuides(canvas, selectedWall!);
+    // Draw handlers (small filled squares) at the edges if the wall is selected
+    if (isSelected) {
+      final handlerPaint = Paint()
+        ..color = Colors.blue
+        ..style = PaintingStyle.fill;
+
+      const handlerSize = 5.0; // Size of the handler squares
+
+      // Draw handler at the start of the wall
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: Offset(-rect.width / 2, 0),
+          width: handlerSize,
+          height: handlerSize,
+        ),
+        handlerPaint,
+      );
+
+      // Draw handler at the end of the wall
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: Offset(rect.width / 2, 0),
+          width: handlerSize,
+          height: handlerSize,
+        ),
+        handlerPaint,
+      );
     }
-  }
 
-  Path _getWallPath(Wall wall) {
-    Path path = Path();
-    final dx = wall.end.dx - wall.start.dx;
-    final dy = wall.end.dy - wall.start.dy;
-    final angle = math.atan2(dy, dx);
-
-    final wallLength = math.sqrt(dx * dx + dy * dy);
-    final wallHeight = 10.0;
-
-    final center = Offset(
-      (wall.start.dx + wall.end.dx) / 2,
-      (wall.start.dy + wall.end.dy) / 2,
-    );
-
-    final rect = Rect.fromLTWH(
-      -wallLength / 2,
-      -wallHeight / 2,
-      wallLength,
-      wallHeight,
-    );
-
-    path.addRect(rect);
-
-    // Transform the path
-    final matrix = Matrix4.identity()
-      ..translate(center.dx, center.dy)
-      ..rotateZ(angle);
-    path = path.transform(matrix.storage);
-
-    return path;
-  }
-
-  Offset _getHandlerPosition(Wall wall, {required bool isLeft}) {
-    final dx = wall.end.dx - wall.start.dx;
-    final dy = wall.end.dy - wall.start.dy;
-    final angle = math.atan2(dy, dx);
-
-    final wallLength = math.sqrt(dx * dx + dy * dy);
-    final wallHeight = 10.0;
-
-    final center = Offset(
-      (wall.start.dx + wall.end.dx) / 2,
-      (wall.start.dy + wall.end.dy) / 2,
-    );
-
-    final rect = Rect.fromLTWH(
-      -wallLength / 2,
-      -wallHeight / 2,
-      wallLength,
-      wallHeight,
-    );
-
-    final handlerOffset = isLeft ? Offset(-rect.width / 2, 0) : Offset(rect.width / 2, 0);
-
-    final matrix = Matrix4.identity()
-      ..translate(center.dx, center.dy)
-      ..rotateZ(angle);
-
-    return MatrixUtils.transformPoint(matrix, handlerOffset);
+    canvas.restore();
   }
 
   void _drawMeasurementGuides(Canvas canvas, Wall wall) {
@@ -550,11 +564,12 @@ class WallPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant WallPainter oldDelegate) {
     return oldDelegate.walls != walls ||
+        oldDelegate.mergedWalls != mergedWalls ||
         oldDelegate.currentWall != currentWall ||
         oldDelegate.selectedWall != selectedWall ||
         oldDelegate.isResizingLeft != isResizingLeft ||
         oldDelegate.isResizingRight != isResizingRight ||
-        oldDelegate.isDragging != isDragging; // Check if dragging state changed
+        oldDelegate.enableWallMerging != enableWallMerging;
   }
 }
 

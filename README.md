@@ -94,3 +94,20 @@ This section outlines the key features and functionality added in each milestone
 - Smooth translation of wall positions
 - Real-time measurement updates during manipulation
 - Robust gesture handling for different operations
+
+### Milestone 8: Wall Merging and Splitting
+
+- Implemented wall merging functionality
+- Added wall splitting capability
+- Automatic measurement updates during merge/split operations
+- Visual indicators for mergeable walls
+- Robust collision detection for merge operations
+
+### Milestone 9: Advanced Wall Editing
+
+- Added wall deletion functionality
+- Implemented undo/redo system for wall operations
+- Improved wall movement precision
+- Enhanced selection highlight stability
+- Optimized performance for complex floorplans
+- Fixed clipping path alignment issues
