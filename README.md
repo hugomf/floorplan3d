@@ -112,3 +112,11 @@ This section outlines the key features and functionality added in each milestone
 - Merged wall path rendering
 - Background grid with left margin
 - Diagonal pattern fill for walls
+
+### Milestone 10: Dragging Improvements
+
+- Added Snap-to-Grid and Wall-Endpoint Logic
+I implemented a new snapping feature to improve the precision of drawing. This functionality is handled in a private method, _snapPoint, within the WallDrawingController. When active, this method modifies a drag or tap position to align with either the nearest grid line or the endpoint of an existing wall.
+- Introduced a Toggleable Snap Feature
+- Added Visual Feedback for Snapping
+To provide a clear visual cue to the user, the WallPainter now draws a small red circle at the snapPosition when snapping is active and the user is interacting with the canvas. This lets the user know exactly where the wall or handler has been snapped to.
