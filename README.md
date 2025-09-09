@@ -153,3 +153,20 @@ While less significant than the persistence feature, the “Prev File” contain
   Now also clears `_snapPosition` when resetting interaction states, guaranteeing a clean slate after gestures end.
 
 &gt; These changes collectively enhance UX by enabling personalized toolbar placement and delivering smoother snapping behavior.
+
+
+### Milestone 12
+
+  - Kept the removal of the `const` modifier from the `WallPainter` constructor to resolve the build error caused by non-final fields (`_cachedWallPath`, `_lastWallCount`, `_lastCurrentWallStart`, `_lastCurrentWallEnd`).
+  - Maintained the `InteractionState` enum for clearer state management.
+  - Retained the undo functionality for wall creation, deletion, and clearing.
+  - Kept accessibility support with `Semantics` for toolbar buttons.
+  - Preserved relative toolbar coordinates for screen rotation handling.
+  - Maintained validation of `SharedPreferences` values and prevention of zero-length walls during resizing.
+  - Replaced boolean flags (_isResizingLeft, _isResizingRight, _isDraggingWall) with an InteractionState enum (none, resizingLeft, resizingRight, draggingWall, drawing) in WallDrawingController. This improves state management clarity and prevents invalid state combinations.
+  - Added Semantics widgets to toolbar buttons (delete, clear, undo, snap toggle) with appropriate labels for screen reader support, enhancing inclusivity
+  - Relative Toolbar Coordinates
+  - Prevent Zero-Length Walls
+  - SharedPreferences Validation
+  - Grouped Constants
+  - Prevent Toolbar Overlap with AppBar

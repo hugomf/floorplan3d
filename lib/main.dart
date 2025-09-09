@@ -4,19 +4,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 
 // === Constants ===
+// Wall Properties
 const double pixelsPerMeter = 20.0;
 const double wallHeight = 10.0;
+const double minWallDistance = 5.0;
+
+// Interaction Tolerances
 const double handlerSize = 5.0;
 const double handlerTolerance = 10.0;
 const double wallSelectionTolerance = 10.0;
-const double minWallDistance = 5.0;
-const double guideSeparation = 10.0;
-const double guideExtension = 5.0;
+const double snapTolerance = 10.0;
+
+// Grid and Guides
 const double gridSpacing = 20.0;
 const double diagonalSpacing = 6.0;
+const double guideSeparation = 10.0;
+const double guideExtension = 5.0;
+
+// UI Elements
 const double marginOffset = 40.0;
 const double marginWidth = 2.0;
-const double snapTolerance = 10.0;
 
 void main() {
   runApp(
@@ -28,6 +35,7 @@ void main() {
 }
 
 // === Data Models ===
+/// Represents a wall defined by its start and end points.
 class Wall {
   Offset start;
   Offset end;
@@ -42,12 +50,14 @@ class Wall {
 
 // === Wall Utility for Transformations ===
 class WallUtils {
+  /// Creates a transformation matrix for the wall centered at its midpoint with its rotation.
   static Matrix4 getTransform(Wall wall) {
     return Matrix4.identity()
       ..translate(wall.center.dx, wall.center.dy)
       ..rotateZ(wall.angle);
   }
 
+  /// Creates a rectangular path for the wall, transformed to its position and angle.
   static Path createWallPath(Wall wall) {
     final path = Path();
     final rect = Rect.fromLTWH(-wall.length / 2, -wallHeight / 2, wall.length, wallHeight);
@@ -55,6 +65,7 @@ class WallUtils {
     return path.transform(getTransform(wall).storage);
   }
 
+  /// Gets the position of the left or right handler for resizing the wall.
   static Offset getHandlerPosition(Wall wall, {required bool isLeft}) {
     final handlerOffset = Offset(isLeft ? -wall.length / 2 : wall.length / 2, 0);
     return MatrixUtils.transformPoint(getTransform(wall), handlerOffset);
@@ -62,16 +73,18 @@ class WallUtils {
 }
 
 // === Controller for State Management ===
+enum InteractionState { none, resizingLeft, resizingRight, draggingWall, drawing }
+
 class WallDrawingController extends ChangeNotifier {
   // === State Variables ===
   final List<Wall> _walls = [];
+  final List<List<Wall>> _undoStack = [];
+  static const int maxUndoSteps = 10;
   Offset? _startPoint;
   Offset? _endPoint;
   Wall? _selectedWall;
   Offset? _dragStartPoint;
-  bool _isResizingLeft = false;
-  bool _isResizingRight = false;
-  bool _isDraggingWall = false;
+  InteractionState _interactionState = InteractionState.none;
   Offset? _snapPosition;
   bool _isSnapEnabled = false;
 
@@ -79,19 +92,21 @@ class WallDrawingController extends ChangeNotifier {
   List<Wall> get walls => _walls;
   Wall? get currentWall => (_startPoint != null && _endPoint != null) ? Wall(_startPoint!, _endPoint!) : null;
   Wall? get selectedWall => _selectedWall;
-  bool get isResizingLeft => _isResizingLeft;
-  bool get isResizingRight => _isResizingRight;
-  bool get isDraggingWall => _isDraggingWall;
+  bool get isResizingLeft => _interactionState == InteractionState.resizingLeft;
+  bool get isResizingRight => _interactionState == InteractionState.resizingRight;
+  bool get isDraggingWall => _interactionState == InteractionState.draggingWall;
+  bool get isDrawing => _interactionState == InteractionState.drawing;
   Offset? get snapPosition => _snapPosition;
   bool get isSnapEnabled => _isSnapEnabled;
 
-  // === Public API to handle gestures ===
+  /// Handles tap down to select a wall at the given position.
   void onTapDown(Offset tapPosition) {
     _selectedWall = _findWallAtPosition(tapPosition);
     _resetInteractionState();
     notifyListeners();
   }
 
+  /// Starts a new interaction (drawing, resizing, or dragging) based on the tap position.
   void onPanStart(Offset tapPosition) {
     _resetInteractionState();
 
@@ -106,24 +121,37 @@ class WallDrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates the current interaction (drawing, resizing, or dragging) with the new position.
   void onPanUpdate(Offset currentPosition) {
     Offset snappedPosition = _isSnapEnabled ? _snapPoint(currentPosition) : currentPosition;
     _snapPosition = _isSnapEnabled ? snappedPosition : null;
 
     if (_selectedWall != null) {
-      if (_isResizingLeft) {
-        _selectedWall!.start = snappedPosition;
-      } else if (_isResizingRight) {
-        _selectedWall!.end = snappedPosition;
-      } else if (_isDraggingWall) {
-        _moveSelectedWall(currentPosition);
+      switch (_interactionState) {
+        case InteractionState.resizingLeft:
+          if ((snappedPosition - _selectedWall!.end).distance > minWallDistance) {
+            _selectedWall!.start = snappedPosition;
+          }
+          break;
+        case InteractionState.resizingRight:
+          if ((snappedPosition - _selectedWall!.start).distance > minWallDistance) {
+            _selectedWall!.end = snappedPosition;
+          }
+          break;
+        case InteractionState.draggingWall:
+          _moveSelectedWall(currentPosition);
+          break;
+        default:
+          break;
       }
     } else if (_startPoint != null) {
+      _interactionState = InteractionState.drawing;
       _endPoint = snappedPosition;
     }
     notifyListeners();
   }
 
+  /// Completes the current interaction, finalizing a new wall if applicable.
   void onPanEnd() {
     if (_startPoint != null && _endPoint != null) {
       _finishDrawingWall();
@@ -135,26 +163,44 @@ class WallDrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deletes the selected wall and saves the state for undo.
   void deleteSelectedWall() {
     if (_selectedWall != null) {
+      _saveStateForUndo();
       _walls.remove(_selectedWall);
       _selectedWall = null;
       notifyListeners();
     }
   }
 
+  /// Clears all walls and saves the state for undo.
   void clearAllWalls() {
-    _walls.clear();
-    _selectedWall = null;
-    notifyListeners();
+    if (_walls.isNotEmpty) {
+      _saveStateForUndo();
+      _walls.clear();
+      _selectedWall = null;
+      notifyListeners();
+    }
   }
 
+  /// Undoes the last wall modification (creation, deletion, or clear).
+  void undo() {
+    if (_undoStack.isNotEmpty) {
+      _walls.clear();
+      _walls.addAll(_undoStack.removeLast());
+      _selectedWall = null;
+      notifyListeners();
+    }
+  }
+
+  /// Toggles snapping to grid and wall endpoints.
   void toggleSnap() {
     _isSnapEnabled = !_isSnapEnabled;
     notifyListeners();
   }
 
-  // === Private Helper Methods (Refactored for clarity) ===
+  // === Private Helper Methods ===
+  /// Finds the wall at the given position, if any.
   Wall? _findWallAtPosition(Offset position) {
     for (var wall in _walls) {
       if (_isPointOnWall(position, wall)) {
@@ -164,37 +210,41 @@ class WallDrawingController extends ChangeNotifier {
     return null;
   }
 
+  /// Checks if the tap is on a handler and starts resizing if so.
   bool _checkAndStartResizing(Offset tapPosition) {
     final leftHandler = WallUtils.getHandlerPosition(_selectedWall!, isLeft: true);
     final rightHandler = WallUtils.getHandlerPosition(_selectedWall!, isLeft: false);
 
     if ((tapPosition - leftHandler).distance < handlerTolerance) {
-      _isResizingLeft = true;
+      _interactionState = InteractionState.resizingLeft;
       _dragStartPoint = tapPosition;
       return true;
     } else if ((tapPosition - rightHandler).distance < handlerTolerance) {
-      _isResizingRight = true;
+      _interactionState = InteractionState.resizingRight;
       _dragStartPoint = tapPosition;
       return true;
     }
     return false;
   }
 
+  /// Checks if the tap is on the wall and starts dragging if so.
   bool _checkAndStartDragging(Offset tapPosition) {
     if (_isPointOnWall(tapPosition, _selectedWall!)) {
       _dragStartPoint = tapPosition;
-      _isDraggingWall = true;
+      _interactionState = InteractionState.draggingWall;
       return true;
     }
     return false;
   }
 
+  /// Starts drawing a new wall at the given position.
   void _startDrawingNewWall(Offset position) {
     _startPoint = position;
     _endPoint = position;
     _selectedWall = null;
   }
 
+  /// Moves the selected wall by the delta between the current and drag start positions.
   void _moveSelectedWall(Offset currentPosition) {
     final delta = currentPosition - _dragStartPoint!;
     _selectedWall!.start += delta;
@@ -202,20 +252,30 @@ class WallDrawingController extends ChangeNotifier {
     _dragStartPoint = currentPosition;
   }
 
+  /// Finalizes a new wall if it meets the minimum distance requirement.
   void _finishDrawingWall() {
     final distance = (_endPoint! - _startPoint!).distance;
     if (distance > minWallDistance) {
+      _saveStateForUndo();
       _walls.add(Wall(_startPoint!, _endPoint!));
     }
   }
 
+  /// Resets the interaction state to none.
   void _resetInteractionState() {
     _dragStartPoint = null;
-    _isResizingLeft = false;
-    _isResizingRight = false;
-    _isDraggingWall = false;
+    _interactionState = InteractionState.none;
   }
 
+  /// Saves the current wall state to the undo stack.
+  void _saveStateForUndo() {
+    _undoStack.add([..._walls.map((w) => Wall(w.start, w.end))]);
+    if (_undoStack.length > maxUndoSteps) {
+      _undoStack.removeAt(0);
+    }
+  }
+
+  /// Determines if a point is on a wall within the selection tolerance.
   bool _isPointOnWall(Offset point, Wall wall) {
     final wallVector = wall.end - wall.start;
     final wallLength = wallVector.distance;
@@ -230,28 +290,34 @@ class WallDrawingController extends ChangeNotifier {
     return perpDistance < wallSelectionTolerance;
   }
 
+  /// Snaps a point to the grid or wall endpoints if snapping is enabled.
   Offset _snapPoint(Offset position) {
-    Offset snappedPoint = position;
+    if (!_isSnapEnabled) return position;
 
-    // Snap to grid
-    double snappedX = (position.dx / gridSpacing).round() * gridSpacing;
-    double snappedY = (position.dy / gridSpacing).round() * gridSpacing;
-    if ((position - Offset(snappedX, snappedY)).distance < snapTolerance) {
-      snappedPoint = Offset(snappedX, snappedY);
-    }
+    Offset snappedPoint = _snapToGrid(position);
+    if ((snappedPoint - position).distance < snapTolerance) return snappedPoint;
 
-    // Snap to other wall endpoints
+    snappedPoint = _snapToWallEndpoints(position);
+    return snappedPoint != position ? snappedPoint : position;
+  }
+
+  /// Snaps a point to the nearest grid intersection.
+  Offset _snapToGrid(Offset position) {
+    final snappedX = (position.dx / gridSpacing).round() * gridSpacing;
+    final snappedY = (position.dy / gridSpacing).round() * gridSpacing;
+    return Offset(snappedX, snappedY);
+  }
+
+  /// Snaps a point to the nearest wall endpoint, if within tolerance.
+  Offset _snapToWallEndpoints(Offset position) {
     for (final wall in _walls) {
-      final endpoints = [wall.start, wall.end];
-      for (final endpoint in endpoints) {
+      for (final endpoint in [wall.start, wall.end]) {
         if ((position - endpoint).distance < snapTolerance) {
-          snappedPoint = endpoint;
-          break;
+          return endpoint;
         }
       }
-      if (snappedPoint != position) break;
     }
-    return snappedPoint;
+    return position;
   }
 }
 
@@ -273,8 +339,11 @@ class WallDrawingToolState extends State<WallDrawingTool> {
   void initState() {
     super.initState();
     _controller = WallDrawingController();
-    _loadToolbarPosition(); // Load saved position
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final stackRenderBox = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+      if (stackRenderBox != null) {
+        _loadToolbarPosition(stackRenderBox.size);
+      }
       _focusNode.requestFocus();
     });
   }
@@ -286,29 +355,34 @@ class WallDrawingToolState extends State<WallDrawingTool> {
     super.dispose();
   }
 
-  // Load toolbar position from SharedPreferences
-  Future<void> _loadToolbarPosition() async {
+  /// Loads the toolbar position from SharedPreferences, using relative coordinates.
+  Future<void> _loadToolbarPosition(Size stackSize) async {
     final prefs = await SharedPreferences.getInstance();
-    final double? x = prefs.getDouble('toolbar_x');
-    final double? y = prefs.getDouble('toolbar_y');
-    if (x != null && y != null) {
-      setState(() {
-        _toolbarLocalPosition = Offset(x, y);
-      });
+    final double? xPercent = prefs.getDouble('toolbar_x_percent');
+    final double? yPercent = prefs.getDouble('toolbar_y_percent');
+    if (xPercent != null && yPercent != null && xPercent.isFinite && yPercent.isFinite) {
+      final newX = (xPercent * stackSize.width).clamp(0.0, stackSize.width - 80.0);
+      final newY = (yPercent * stackSize.height).clamp(0.0, stackSize.height - 120.0);
+      if (newX != _toolbarLocalPosition.dx || newY != _toolbarLocalPosition.dy) {
+        setState(() {
+          _toolbarLocalPosition = Offset(newX, newY);
+        });
+      }
     }
   }
 
-  // Save toolbar position to SharedPreferences
-  Future<void> _saveToolbarPosition(Offset position) async {
+  /// Saves the toolbar position to SharedPreferences using relative coordinates.
+  Future<void> _saveToolbarPosition(Offset position, Size stackSize) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('toolbar_x', position.dx);
-    await prefs.setDouble('toolbar_y', position.dy);
+    await prefs.setDouble('toolbar_x_percent', position.dx / stackSize.width);
+    await prefs.setDouble('toolbar_y_percent', position.dy / stackSize.height);
   }
 
+  /// Handles keyboard events for deleting walls.
   KeyEventResult _handleKeyEvent(FocusNode focusNode, RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
       if ((event.logicalKey == LogicalKeyboardKey.delete ||
-          event.logicalKey == LogicalKeyboardKey.backspace) &&
+              event.logicalKey == LogicalKeyboardKey.backspace) &&
           _controller.selectedWall != null) {
         _controller.deleteSelectedWall();
         return KeyEventResult.handled;
@@ -330,23 +404,21 @@ class WallDrawingToolState extends State<WallDrawingTool> {
             key: _stackKey,
             children: [
               const BackgroundGrid(),
-
               AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
                   return Stack(
                     children: [
                       ..._controller.walls.map((wall) => ClipPath(
-                        key: ValueKey('${wall.start}_${wall.end}'),
-                        clipper: WallClipper(wall),
-                        child: const DiagonalPattern(),
-                      )),
+                            key: ValueKey('${wall.start}_${wall.end}'),
+                            clipper: WallClipper(wall),
+                            child: const DiagonalPattern(),
+                          )),
                       if (_controller.currentWall != null)
                         ClipPath(
                           clipper: WallClipper(_controller.currentWall!),
                           child: const DiagonalPattern(),
                         ),
-
                       Focus(
                         focusNode: _focusNode,
                         autofocus: true,
@@ -387,7 +459,6 @@ class WallDrawingToolState extends State<WallDrawingTool> {
                   );
                 },
               ),
-
               Positioned(
                 top: 10,
                 left: 10,
@@ -410,7 +481,6 @@ class WallDrawingToolState extends State<WallDrawingTool> {
                   },
                 ),
               ),
-
               Positioned(
                 left: _toolbarLocalPosition.dx,
                 top: _toolbarLocalPosition.dy,
@@ -424,14 +494,13 @@ class WallDrawingToolState extends State<WallDrawingTool> {
                     final RenderBox stackRenderBox = _stackKey.currentContext!.findRenderObject()! as RenderBox;
                     final localOffset = stackRenderBox.globalToLocal(details.offset);
                     final stackSize = stackRenderBox.size;
-
-                    // Clamp the position to stay within the Stack's bounds
+                    final appBarHeight = AppBar().preferredSize.height + MediaQuery.of(context).padding.top;
                     final clampedX = localOffset.dx.clamp(0.0, stackSize.width - 80.0);
-                    final clampedY = localOffset.dy.clamp(0.0, stackSize.height - 120.0);
+                    final clampedY = localOffset.dy.clamp(appBarHeight, stackSize.height - 120.0);
 
                     setState(() {
                       _toolbarLocalPosition = Offset(clampedX, clampedY);
-                      _saveToolbarPosition(_toolbarLocalPosition); // Save the new position
+                      _saveToolbarPosition(_toolbarLocalPosition, stackSize);
                     });
                   },
                   child: _buildToolbar(),
@@ -444,6 +513,7 @@ class WallDrawingToolState extends State<WallDrawingTool> {
     );
   }
 
+  /// Builds the draggable toolbar with action buttons.
   Widget _buildToolbar() {
     return AnimatedBuilder(
       animation: _controller,
@@ -466,25 +536,47 @@ class WallDrawingToolState extends State<WallDrawingTool> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: _controller.deleteSelectedWall,
-                tooltip: 'Delete selected wall',
-              ),
-              const Divider(height: 10, color: Colors.grey),
-              IconButton(
-                icon: const Icon(Icons.clear_all, color: Colors.blueGrey),
-                onPressed: _controller.clearAllWalls,
-                tooltip: 'Clear all walls',
-              ),
-              const Divider(height: 10, color: Colors.grey),
-              IconButton(
-                icon: Icon(
-                  isSnapEnabled ? Icons.gps_fixed : Icons.gps_not_fixed,
-                  color: isSnapEnabled ? Colors.green : Colors.black,
+              Semantics(
+                button: true,
+                label: 'Delete selected wall',
+                child: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: _controller.deleteSelectedWall,
+                  tooltip: 'Delete selected wall',
                 ),
-                onPressed: _controller.toggleSnap,
-                tooltip: 'Toggle snapping (${isSnapEnabled ? 'On' : 'Off'})',
+              ),
+              const Divider(height: 10, color: Colors.grey),
+              Semantics(
+                button: true,
+                label: 'Clear all walls',
+                child: IconButton(
+                  icon: const Icon(Icons.clear_all, color: Colors.blueGrey),
+                  onPressed: _controller.clearAllWalls,
+                  tooltip: 'Clear all walls',
+                ),
+              ),
+              const Divider(height: 10, color: Colors.grey),
+              Semantics(
+                button: true,
+                label: 'Undo last action',
+                child: IconButton(
+                  icon: const Icon(Icons.undo, color: Colors.blue),
+                  onPressed: _controller.undo,
+                  tooltip: 'Undo last action',
+                ),
+              ),
+              const Divider(height: 10, color: Colors.grey),
+              Semantics(
+                button: true,
+                label: 'Toggle snapping (${isSnapEnabled ? 'On' : 'Off'})',
+                child: IconButton(
+                  icon: Icon(
+                    isSnapEnabled ? Icons.gps_fixed : Icons.gps_not_fixed,
+                    color: isSnapEnabled ? Colors.green : Colors.black,
+                  ),
+                  onPressed: _controller.toggleSnap,
+                  tooltip: 'Toggle snapping (${isSnapEnabled ? 'On' : 'Off'})',
+                ),
               ),
             ],
           ),
@@ -522,6 +614,11 @@ class WallPainter extends CustomPainter {
   final Offset? snapPosition;
   final bool isSnapEnabled;
 
+  Path? _cachedWallPath;
+  int _lastWallCount = 0;
+  Offset? _lastCurrentWallStart;
+  Offset? _lastCurrentWallEnd;
+
   static final _wallPaint = Paint()
     ..color = Colors.black
     ..strokeWidth = 2
@@ -540,7 +637,7 @@ class WallPainter extends CustomPainter {
     ..color = Colors.red
     ..style = PaintingStyle.fill;
 
-  const WallPainter({
+  WallPainter({
     required this.walls,
     this.currentWall,
     this.selectedWall,
@@ -561,22 +658,30 @@ class WallPainter extends CustomPainter {
     _drawSnapGuide(canvas);
   }
 
+  /// Draws all walls and the current wall being drawn, merging overlapping paths.
   void _drawAllWalls(Canvas canvas) {
-    Path mergedPath = Path();
-
-    for (final wall in walls) {
-      final wallPath = WallUtils.createWallPath(wall);
-      mergedPath = Path.combine(PathOperation.union, mergedPath, wallPath);
+    if (_cachedWallPath == null ||
+        _lastWallCount != walls.length ||
+        (currentWall != null &&
+            (_lastCurrentWallStart != currentWall!.start ||
+                _lastCurrentWallEnd != currentWall!.end))) {
+      _cachedWallPath = Path();
+      for (final wall in walls) {
+        final wallPath = WallUtils.createWallPath(wall);
+        _cachedWallPath = Path.combine(PathOperation.union, _cachedWallPath!, wallPath);
+      }
+      if (currentWall != null) {
+        final currentWallPath = WallUtils.createWallPath(currentWall!);
+        _cachedWallPath = Path.combine(PathOperation.union, _cachedWallPath!, currentWallPath);
+      }
+      _lastWallCount = walls.length;
+      _lastCurrentWallStart = currentWall?.start;
+      _lastCurrentWallEnd = currentWall?.end;
     }
-
-    if (currentWall != null) {
-      final currentWallPath = WallUtils.createWallPath(currentWall!);
-      mergedPath = Path.combine(PathOperation.union, mergedPath, currentWallPath);
-    }
-
-    canvas.drawPath(mergedPath, _wallPaint);
+    canvas.drawPath(_cachedWallPath!, _wallPaint);
   }
 
+  /// Draws the selected wall with handlers.
   void _drawSelectedWall(Canvas canvas) {
     if (selectedWall == null) return;
 
@@ -588,26 +693,28 @@ class WallPainter extends CustomPainter {
     }
   }
 
+  /// Draws resize handlers for the selected wall.
   void _drawHandlers(Canvas canvas, Wall wall) {
     final leftHandler = WallUtils.getHandlerPosition(wall, isLeft: true);
     final rightHandler = WallUtils.getHandlerPosition(wall, isLeft: false);
-
     _drawHandler(canvas, leftHandler);
     _drawHandler(canvas, rightHandler);
   }
 
+  /// Draws a single handler at the given position.
   void _drawHandler(Canvas canvas, Offset position) {
     final rect = Rect.fromCenter(center: position, width: handlerSize, height: handlerSize);
     canvas.drawRect(rect, _handlerPaint);
   }
 
+  /// Draws measurement guides and text for the selected wall.
   void _drawMeasurementGuides(Canvas canvas, Wall wall) {
     canvas.save();
     canvas.translate(wall.center.dx, wall.center.dy);
     canvas.rotate(wall.angle);
 
     final guidePaint = Paint()
-      ..color = Colors.blueGrey
+      ..color = Colors.blueGrey.shade700
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
@@ -617,6 +724,7 @@ class WallPainter extends CustomPainter {
     canvas.restore();
   }
 
+  /// Draws guide lines above and below the wall.
   void _drawGuideLines(Canvas canvas, double wallLength, Paint paint) {
     final halfWidth = wallLength / 2;
     final topY = -wallHeight / 2 - guideSeparation;
@@ -631,6 +739,7 @@ class WallPainter extends CustomPainter {
     _drawVerticalLineWithArrow(canvas, halfWidth, bottomY, guideExtension, paint, isStart: false);
   }
 
+  /// Draws measurement text above and below the wall.
   void _drawMeasurementText(Canvas canvas, Wall wall) {
     final meters = wall.length / pixelsPerMeter;
     final textPainter = TextPainter(
@@ -647,11 +756,11 @@ class WallPainter extends CustomPainter {
     textPainter.layout();
 
     final isUpsideDown = wall.angle > math.pi / 2 || wall.angle < -math.pi / 2;
-
     _drawTextAtPosition(canvas, textPainter, -wallHeight / 2 - guideSeparation, isUpsideDown);
     _drawTextAtPosition(canvas, textPainter, wallHeight / 2 + guideSeparation, isUpsideDown);
   }
 
+  /// Draws text at the specified position, handling upside-down text.
   void _drawTextAtPosition(Canvas canvas, TextPainter textPainter, double y, bool isUpsideDown) {
     canvas.save();
     canvas.translate(-textPainter.width / 2, y - textPainter.height / 2);
@@ -664,7 +773,9 @@ class WallPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _drawVerticalLineWithArrow(Canvas canvas, double x, double y, double arrowSize, Paint paint, {required bool isStart}) {
+  /// Draws a vertical line with arrows for measurement guides.
+  void _drawVerticalLineWithArrow(
+      Canvas canvas, double x, double y, double arrowSize, Paint paint, {required bool isStart}) {
     canvas.drawLine(Offset(x, y - arrowSize), Offset(x, y + arrowSize), paint);
     if (isStart) {
       canvas.drawLine(Offset(x, y), Offset(x + arrowSize, y - arrowSize), paint);
@@ -675,6 +786,7 @@ class WallPainter extends CustomPainter {
     }
   }
 
+  /// Draws a visual indicator for the snap position.
   void _drawSnapGuide(Canvas canvas) {
     if (isSnapEnabled && snapPosition != null) {
       canvas.drawCircle(snapPosition!, handlerSize, _snapPaint);
@@ -683,8 +795,9 @@ class WallPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant WallPainter oldDelegate) {
-    return oldDelegate.walls != walls ||
-        oldDelegate.currentWall != currentWall ||
+    return oldDelegate.walls.length != walls.length ||
+        oldDelegate.currentWall?.start != currentWall?.start ||
+        oldDelegate.currentWall?.end != currentWall?.end ||
         oldDelegate.selectedWall != selectedWall ||
         oldDelegate.isResizingLeft != isResizingLeft ||
         oldDelegate.isResizingRight != isResizingRight ||
@@ -709,7 +822,7 @@ class BackgroundGrid extends StatelessWidget {
 
 class GridPainter extends CustomPainter {
   static final _marginPaint = Paint()
-    ..color = Colors.red.withOpacity(0.4)
+    ..color = Colors.red
     ..strokeWidth = marginWidth
     ..style = PaintingStyle.stroke;
 
@@ -736,7 +849,6 @@ class GridPainter extends CustomPainter {
     for (double x = 0; x < size.width; x += gridSpacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), _gridPaint);
     }
-
     for (double y = 0; y < size.height; y += gridSpacing) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), _gridPaint);
     }
