@@ -1,223 +1,181 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import 'dart:math' as math;
 
-// void main() {
-//   runApp(FloorplanApp());
-// }
-
-class FloorplanApp_M1 extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Floorplan Designer',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: FloorplanScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
+void main() {
+  runApp(
+    MaterialApp(
+      home: const WallDrawingTool(),
+      debugShowCheckedModeBanner: false, // Optional: Remove debug banner
+    ),
+  );
 }
 
-class FloorplanScreen extends StatefulWidget {
+class WallDrawingTool extends StatefulWidget {
+  const WallDrawingTool({super.key});
+
   @override
-  _FloorplanScreenState createState() => _FloorplanScreenState();
+  WallDrawingToolState createState() => WallDrawingToolState();
 }
 
-class _FloorplanScreenState extends State<FloorplanScreen> {
-  List<Wall> _walls = [];
-  Wall? _currentWall;
-  double _wallWidth = 15.0;  // Default to external wall width (15cm)
-  bool _isDrawing = false;
-  WallType _wallType = WallType.external;  // Default wall type is external
+class WallDrawingToolState extends State<WallDrawingTool> {
+  List<Wall> walls = [];
+  Offset? startPoint;
+  Offset? endPoint;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Floorplan Designer'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: () => setState(() => _walls.clear()),
-          ),
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: _showWallSettingsDialog,
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          CustomPaint(
-            size: Size.infinite,
-            painter: FloorplanBackgroundPainter(),
-          ),
-          GestureDetector(
-            onPanStart: (details) {
-              setState(() {
-                _isDrawing = true;
-                _currentWall = Wall(
-                  startPoint: details.localPosition,
-                  endPoint: details.localPosition,
-                  width: _wallWidth,
-                  type: _wallType,
-                );
-              });
-            },
-            onPanUpdate: (details) {
-              if (_isDrawing && _currentWall != null) {
-                setState(() {
-                  _currentWall?.endPoint = details.localPosition;
-                });
-              }
-            },
-            onPanEnd: (details) {
-              setState(() {
-                if (_currentWall != null) {
-                  _walls.add(_currentWall!);
-                  _currentWall = null;
-                  _isDrawing = false;
-                }
-              });
-            },
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: WallPainter(_walls, _currentWall),
+      backgroundColor: Colors.white, // Set background color
+      appBar: AppBar(title: const Text('Wall Drawing Tool')),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Background Layer: Grid
+            Positioned.fill(
+              child: CustomPaint(
+                painter: GridPainter(),
+              ),
             ),
-          ),
-        ],
+            // Foreground Layer: Wall Drawing
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: GestureDetector(
+                  onPanStart: _onPanStart,
+                  onPanUpdate: _onPanUpdate,
+                  onPanEnd: _onPanEnd,
+                  child: CustomPaint(
+                    painter: WallPainter(walls: walls, currentWall: _getCurrentWall()),
+                    child: Container(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+      // Removed the drawer and floating action button
     );
   }
 
-  void _showWallSettingsDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Wall Settings'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButton<WallType>(
-                value: _wallType,
-                onChanged: (WallType? newValue) {
-                  setState(() {
-                    _wallType = newValue!;
-                    _wallWidth = (_wallType == WallType.external) ? 15.0 : 10.0;
-                  });
-                },
-                items: WallType.values.map((WallType wallType) {
-                  return DropdownMenuItem<WallType>(
-                    value: wallType,
-                    child: Text(wallType.toString().split('.').last),
-                  );
-                }).toList(),
-              ),
-              Slider(
-                value: _wallWidth,
-                min: 5.0,
-                max: 20.0,
-                divisions: 15,
-                label: '${_wallWidth.round()} cm',
-                onChanged: (double value) {
-                  setState(() {
-                    _wallWidth = value;
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+  void _onPanStart(DragStartDetails details) {
+    setState(() {
+      startPoint = details.localPosition;
+      endPoint = details.localPosition;
+    });
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    setState(() {
+      endPoint = details.localPosition;
+    });
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (startPoint != null && endPoint != null) {
+      final distance = (endPoint! - startPoint!).distance;
+      if (distance > 5.0) {
+        setState(() {
+          walls.add(Wall(startPoint!, endPoint!));
+        });
+      }
+      startPoint = null;
+      endPoint = null;
+    }
+  }
+
+  Wall? _getCurrentWall() {
+    if (startPoint != null && endPoint != null) {
+      return Wall(startPoint!, endPoint!);
+    }
+    return null;
   }
 }
 
 class Wall {
-  Offset startPoint;
-  Offset endPoint;
-  double width;
-  WallType type;
+  final Offset start;
+  final Offset end;
 
-  Wall({required this.startPoint, required this.endPoint, required this.width, required this.type});
-}
-
-enum WallType {
-  external,
-  internal,
+  Wall(this.start, this.end);
 }
 
 class WallPainter extends CustomPainter {
   final List<Wall> walls;
   final Wall? currentWall;
 
-  WallPainter(this.walls, this.currentWall);
+  WallPainter({required this.walls, this.currentWall});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.black  // Color for the outline
-      ..style = PaintingStyle.stroke  // Outline only
-      ..strokeWidth = 2.0;  // Stroke width for the outline
+      ..color = Colors.black
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
 
-    // Draw existing walls
     for (var wall in walls) {
       _drawWall(canvas, wall, paint);
     }
 
-    // Draw the current wall being drawn
     if (currentWall != null) {
       _drawWall(canvas, currentWall!, paint);
     }
   }
 
   void _drawWall(Canvas canvas, Wall wall, Paint paint) {
-    // Calculate perpendicular offset
-    final dx = wall.endPoint.dx - wall.startPoint.dx;
-    final dy = wall.endPoint.dy - wall.startPoint.dy;
-    final length = sqrt(dx * dx + dy * dy);
-    final offsetX = -dy / length * wall.width / 2;
-    final offsetY = dx / length * wall.width / 2;
+    final dx = wall.end.dx - wall.start.dx;
+    final dy = wall.end.dy - wall.start.dy;
+    final angle = math.atan2(dy, dx);
 
-    final path = Path()
-      ..moveTo(wall.startPoint.dx + offsetX, wall.startPoint.dy + offsetY)
-      ..lineTo(wall.endPoint.dx + offsetX, wall.endPoint.dy + offsetY)
-      ..lineTo(wall.endPoint.dx - offsetX, wall.endPoint.dy - offsetY)
-      ..lineTo(wall.startPoint.dx - offsetX, wall.startPoint.dy - offsetY)
-      ..close();
+    final wallLength = math.sqrt(dx * dx + dy * dy);
+    final wallHeight = 10.0;
 
-    canvas.drawPath(path, paint);
+    final center = Offset(
+      (wall.start.dx + wall.end.dx) / 2,
+      (wall.start.dy + wall.end.dy) / 2,
+    );
+
+    final rect = Rect.fromLTWH(
+      -wallLength / 2,
+      -wallHeight / 2,
+      wallLength,
+      wallHeight,
+    );
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+    canvas.drawRect(rect, paint);
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant WallPainter oldDelegate) {
+    return oldDelegate.walls != walls || oldDelegate.currentWall != currentWall;
+  }
 }
 
-class FloorplanBackgroundPainter extends CustomPainter {
+class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.blue.withOpacity(0.2)
+      ..color = Colors.grey[300]!
+      ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
-    const double gridSpacing = 20.0;
+    const gridSize = 20.0; // Size of each grid square
 
-    // Draw grid lines
-    for (double x = 0; x < size.width; x += gridSpacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    // Draw vertical lines
+    for (double i = 0; i < size.width; i += gridSize) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
     }
 
-    for (double y = 0; y < size.height; y += gridSpacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    // Draw horizontal lines
+    for (double i = 0; i < size.height; i += gridSize) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
     }
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
+  }
 }

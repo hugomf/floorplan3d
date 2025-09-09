@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
-
-const double pixelsPerMeter = 20.0; // 20 px = 1 m
-
 void main() {
   runApp(
     MaterialApp(
@@ -29,8 +26,6 @@ class WallDrawingToolState extends State<WallDrawingTool> {
   bool isResizingLeft = false;
   bool isResizingRight = false;
   bool isDragging = false; // Track if a wall is being dragged
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -486,13 +481,10 @@ class WallPainter extends CustomPainter {
     _drawVerticalLineWithArrow(canvas, bottomGuideStart.dx, bottomGuideY, guideExtension, guidePaint, isStart: true);
     _drawVerticalLineWithArrow(canvas, bottomGuideEnd.dx, bottomGuideY, guideExtension, guidePaint, isStart: false);
 
-    final meters = wallLength / pixelsPerMeter;
-    final measurementText = meters.toStringAsFixed(2); // 2 decimales
-
     // Prepare the text painter for the measurement value
     final textPainter = TextPainter(
       text: TextSpan(
-        text: '$measurementText m',
+        text: '${wallLength.toStringAsFixed(1)}px',
         style: const TextStyle(
           color: Colors.blueGrey,
           fontSize: 12,
