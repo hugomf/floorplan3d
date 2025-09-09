@@ -120,3 +120,36 @@ I implemented a new snapping feature to improve the precision of drawing. This f
 - Introduced a Toggleable Snap Feature
 - Added Visual Feedback for Snapping
 To provide a clear visual cue to the user, the WallPainter now draws a small red circle at the snapPosition when snapping is active and the user is interacting with the canvas. This lets the user know exactly where the wall or handler has been snapped to.
+
+
+### Milestone 11: Toolbar Position and Snap Tool
+
+## 1. Toolbar Position Persistence 💾
+- **Added `shared_preferences` dependency**  
+  Used for storing small amounts of data locally on the device.
+
+- **Implemented `_loadToolbarPosition()`**  
+  Asynchronous method called in `initState` to retrieve saved `toolbar_x` and `toolbar_y` values from `SharedPreferences`.  
+  If values exist, `_toolbarLocalPosition` is updated, repositioning the toolbar.
+
+- **Implemented `_saveToolbarPosition(Offset position)`**  
+  Asynchronous method invoked within `onDragEnd` of the `Draggable` widget.  
+  Saves the new `dx` and `dy` coordinates to `SharedPreferences`.
+
+- **Modified `Draggable`'s `onDragEnd`**  
+  The existing `setState` now also calls `_saveToolbarPosition` to persist the updated coordinates.
+
+## 2. Minor Refinements in Previous Version
+*(for clarity in comparison)*  
+While less significant than the persistence feature, the “Prev File” contained small adjustments that were refined in the “Current File”:
+
+- **`_snapPoint` Logic**  
+  Snapping calculations improved to correctly determine the closest snap point, including better handling of grid and endpoint snapping.
+
+- **`onPanStart` & `onPanUpdate` with Snapping**  
+  Updated in `WallDrawingController` to integrate `_snapPoint` more robustly, ensuring snapped positions are used when snapping is enabled.
+
+- **`_resetInteractionState()`**  
+  Now also clears `_snapPosition` when resetting interaction states, guaranteeing a clean slate after gestures end.
+
+&gt; These changes collectively enhance UX by enabling personalized toolbar placement and delivering smoother snapping behavior.
