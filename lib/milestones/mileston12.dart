@@ -357,33 +357,25 @@ class WallDrawingToolState extends State<WallDrawingTool> {
 
   /// Loads the toolbar position from SharedPreferences, using relative coordinates.
   Future<void> _loadToolbarPosition(Size stackSize) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final double? xPercent = prefs.getDouble('toolbar_x_percent');
-      final double? yPercent = prefs.getDouble('toolbar_y_percent');
-      if (xPercent != null && yPercent != null && xPercent.isFinite && yPercent.isFinite) {
-        final newX = (xPercent * stackSize.width).clamp(0.0, stackSize.width - 80.0);
-        final newY = (yPercent * stackSize.height).clamp(0.0, stackSize.height - 120.0);
-        if (newX != _toolbarLocalPosition.dx || newY != _toolbarLocalPosition.dy) {
-          setState(() {
-            _toolbarLocalPosition = Offset(newX, newY);
-          });
-        }
+    final prefs = await SharedPreferences.getInstance();
+    final double? xPercent = prefs.getDouble('toolbar_x_percent');
+    final double? yPercent = prefs.getDouble('toolbar_y_percent');
+    if (xPercent != null && yPercent != null && xPercent.isFinite && yPercent.isFinite) {
+      final newX = (xPercent * stackSize.width).clamp(0.0, stackSize.width - 80.0);
+      final newY = (yPercent * stackSize.height).clamp(0.0, stackSize.height - 120.0);
+      if (newX != _toolbarLocalPosition.dx || newY != _toolbarLocalPosition.dy) {
+        setState(() {
+          _toolbarLocalPosition = Offset(newX, newY);
+        });
       }
-    } catch (e) {
-      debugPrint('Error loading toolbar position: $e');
     }
   }
 
   /// Saves the toolbar position to SharedPreferences using relative coordinates.
   Future<void> _saveToolbarPosition(Offset position, Size stackSize) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble('toolbar_x_percent', position.dx / stackSize.width);
-      await prefs.setDouble('toolbar_y_percent', position.dy / stackSize.height);
-    } catch (e) {
-      debugPrint('Error saving toolbar position: $e');
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('toolbar_x_percent', position.dx / stackSize.width);
+    await prefs.setDouble('toolbar_y_percent', position.dy / stackSize.height);
   }
 
   /// Handles keyboard events for deleting walls.
@@ -444,25 +436,20 @@ class WallDrawingToolState extends State<WallDrawingTool> {
                           onPanStart: (details) => _controller.onPanStart(details.localPosition),
                           onPanUpdate: (details) => _controller.onPanUpdate(details.localPosition),
                           onPanEnd: (_) => _controller.onPanEnd(),
-                          child: Semantics(
-                            label: _controller.selectedWall != null
-                                ? 'Wall selected. Length: ${(_controller.selectedWall!.length / pixelsPerMeter).toStringAsFixed(2)} meters.'
-                                : 'Canvas with ${_controller.walls.length} walls. Tap and drag to create a new wall.',
-                            child: Container(
-                              width: double.infinity,
-                              height: double.infinity,
-                              color: Colors.transparent,
-                              child: CustomPaint(
-                                painter: WallPainter(
-                                  walls: _controller.walls,
-                                  currentWall: _controller.currentWall,
-                                  selectedWall: _controller.selectedWall,
-                                  isResizingLeft: _controller.isResizingLeft,
-                                  isResizingRight: _controller.isResizingRight,
-                                  isDragging: _controller.isDraggingWall,
-                                  snapPosition: _controller.snapPosition,
-                                  isSnapEnabled: _controller.isSnapEnabled,
-                                ),
+                          child: Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            color: Colors.transparent,
+                            child: CustomPaint(
+                              painter: WallPainter(
+                                walls: _controller.walls,
+                                currentWall: _controller.currentWall,
+                                selectedWall: _controller.selectedWall,
+                                isResizingLeft: _controller.isResizingLeft,
+                                isResizingRight: _controller.isResizingRight,
+                                isDragging: _controller.isDraggingWall,
+                                snapPosition: _controller.snapPosition,
+                                isSnapEnabled: _controller.isSnapEnabled,
                               ),
                             ),
                           ),
@@ -678,24 +665,19 @@ class WallPainter extends CustomPainter {
         (currentWall != null &&
             (_lastCurrentWallStart != currentWall!.start ||
                 _lastCurrentWallEnd != currentWall!.end))) {
-      if (walls.isEmpty && currentWall == null) {
-        _cachedWallPath = Path();
-      } else {
-        _cachedWallPath = Path();
-        for (final wall in walls) {
-          final wallPath = WallUtils.createWallPath(wall);
-          _cachedWallPath = Path.combine(PathOperation.union, _cachedWallPath!, wallPath);
-        }
-        if (currentWall != null) {
-          final currentWallPath = WallUtils.createWallPath(currentWall!);
-          _cachedWallPath = Path.combine(PathOperation.union, _cachedWallPath!, currentWallPath);
-        }
+      _cachedWallPath = Path();
+      for (final wall in walls) {
+        final wallPath = WallUtils.createWallPath(wall);
+        _cachedWallPath = Path.combine(PathOperation.union, _cachedWallPath!, wallPath);
+      }
+      if (currentWall != null) {
+        final currentWallPath = WallUtils.createWallPath(currentWall!);
+        _cachedWallPath = Path.combine(PathOperation.union, _cachedWallPath!, currentWallPath);
       }
       _lastWallCount = walls.length;
       _lastCurrentWallStart = currentWall?.start;
       _lastCurrentWallEnd = currentWall?.end;
     }
-    if (_cachedWallPath!.getBounds().isEmpty) return;
     canvas.drawPath(_cachedWallPath!, _wallPaint);
   }
 
