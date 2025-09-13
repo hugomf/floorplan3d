@@ -6,6 +6,8 @@ import 'dart:math';
 // }
 
 class FloorplanApp_M1 extends StatelessWidget {
+  const FloorplanApp_M1({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -18,12 +20,14 @@ class FloorplanApp_M1 extends StatelessWidget {
 }
 
 class FloorplanScreen extends StatefulWidget {
+  const FloorplanScreen({super.key});
+
   @override
   _FloorplanScreenState createState() => _FloorplanScreenState();
 }
 
 class _FloorplanScreenState extends State<FloorplanScreen> {
-  List<Wall> _walls = [];
+  final List<Wall> _walls = [];
   Wall? _currentWall;
   double _wallWidth = 15.0;  // Default to external wall width (15cm)
   bool _isDrawing = false;

@@ -26,6 +26,8 @@ void main() {
 }
 
 class MusicPlayerApp extends StatelessWidget {
+  const MusicPlayerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -36,6 +38,8 @@ class MusicPlayerApp extends StatelessWidget {
 }
 
 class MusicPlayer extends StatefulWidget {
+  const MusicPlayer({super.key});
+
   @override
   _MusicPlayerState createState() => _MusicPlayerState();
 }
@@ -105,26 +109,26 @@ class _MusicPlayerState extends State<MusicPlayer> {
               children: [
                 ElevatedButton(
                   onPressed: _playMusic,
-                  child: Text("Play"),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   ),
+                  child: Text("Play"),
                 ),
                 SizedBox(width: 20),
                 ElevatedButton(
                   onPressed: _pauseMusic,
-                  child: Text("Pause"),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   ),
+                  child: Text("Pause"),
                 ),
                 SizedBox(width: 20),
                 ElevatedButton(
                   onPressed: _stopMusic,
-                  child: Text("Stop"),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   ),
+                  child: Text("Stop"),
                 ),
               ],
             ),

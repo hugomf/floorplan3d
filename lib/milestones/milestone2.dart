@@ -207,6 +207,8 @@ class WallPainter extends CustomPainter {
 
 // Capa de fondo con grid
 class BackgroundGrid extends StatelessWidget {
+  const BackgroundGrid({super.key});
+
   @override
   Widget build(BuildContext context) {
     return CustomPaint(

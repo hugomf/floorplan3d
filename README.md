@@ -170,3 +170,11 @@ While less significant than the persistence feature, the “Prev File” contain
   - SharedPreferences Validation
   - Grouped Constants
   - Prevent Toolbar Overlap with AppBar
+
+
+
+### Milestone 13
+- 3D View Toggle - New button in the toolbar with a 3D icon
+- Simple 3D Renderer - Custom painter that projects your 2D walls into 3D space
+- Interactive 3D View - Drag to rotate around the scene
+- Ground Grid - Visual reference grid on the floor plane

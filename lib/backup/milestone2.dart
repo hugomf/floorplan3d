@@ -5,6 +5,8 @@ import 'dart:math';
 
 
 class TimerApp extends StatelessWidget {
+  const TimerApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -15,6 +17,8 @@ class TimerApp extends StatelessWidget {
 }
 
 class TimerHome extends StatefulWidget {
+  const TimerHome({super.key});
+
   @override
   _TimerHomeState createState() => _TimerHomeState();
 }
