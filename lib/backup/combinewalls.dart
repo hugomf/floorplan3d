@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 
 class CombineWallsApp extends StatelessWidget {
-  const CombineWallsApp({Key? key}) : super(key: key);
+  const CombineWallsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class CombineWallsApp extends StatelessWidget {
 }
 
 class WallPainterWidget extends StatelessWidget {
-  const WallPainterWidget({Key? key}) : super(key: key);
+  const WallPainterWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

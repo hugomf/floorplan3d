@@ -112,3 +112,69 @@ This section outlines the key features and functionality added in each milestone
 - Merged wall path rendering
 - Background grid with left margin
 - Diagonal pattern fill for walls
+
+### Milestone 10: Dragging Improvements
+
+- Added Snap-to-Grid and Wall-Endpoint Logic
+I implemented a new snapping feature to improve the precision of drawing. This functionality is handled in a private method, _snapPoint, within the WallDrawingController. When active, this method modifies a drag or tap position to align with either the nearest grid line or the endpoint of an existing wall.
+- Introduced a Toggleable Snap Feature
+- Added Visual Feedback for Snapping
+To provide a clear visual cue to the user, the WallPainter now draws a small red circle at the snapPosition when snapping is active and the user is interacting with the canvas. This lets the user know exactly where the wall or handler has been snapped to.
+
+
+### Milestone 11: Toolbar Position and Snap Tool
+
+## 1. Toolbar Position Persistence 💾
+- **Added `shared_preferences` dependency**  
+  Used for storing small amounts of data locally on the device.
+
+- **Implemented `_loadToolbarPosition()`**  
+  Asynchronous method called in `initState` to retrieve saved `toolbar_x` and `toolbar_y` values from `SharedPreferences`.  
+  If values exist, `_toolbarLocalPosition` is updated, repositioning the toolbar.
+
+- **Implemented `_saveToolbarPosition(Offset position)`**  
+  Asynchronous method invoked within `onDragEnd` of the `Draggable` widget.  
+  Saves the new `dx` and `dy` coordinates to `SharedPreferences`.
+
+- **Modified `Draggable`'s `onDragEnd`**  
+  The existing `setState` now also calls `_saveToolbarPosition` to persist the updated coordinates.
+
+## 2. Minor Refinements in Previous Version
+*(for clarity in comparison)*  
+While less significant than the persistence feature, the “Prev File” contained small adjustments that were refined in the “Current File”:
+
+- **`_snapPoint` Logic**  
+  Snapping calculations improved to correctly determine the closest snap point, including better handling of grid and endpoint snapping.
+
+- **`onPanStart` & `onPanUpdate` with Snapping**  
+  Updated in `WallDrawingController` to integrate `_snapPoint` more robustly, ensuring snapped positions are used when snapping is enabled.
+
+- **`_resetInteractionState()`**  
+  Now also clears `_snapPosition` when resetting interaction states, guaranteeing a clean slate after gestures end.
+
+&gt; These changes collectively enhance UX by enabling personalized toolbar placement and delivering smoother snapping behavior.
+
+
+### Milestone 12
+
+  - Kept the removal of the `const` modifier from the `WallPainter` constructor to resolve the build error caused by non-final fields (`_cachedWallPath`, `_lastWallCount`, `_lastCurrentWallStart`, `_lastCurrentWallEnd`).
+  - Maintained the `InteractionState` enum for clearer state management.
+  - Retained the undo functionality for wall creation, deletion, and clearing.
+  - Kept accessibility support with `Semantics` for toolbar buttons.
+  - Preserved relative toolbar coordinates for screen rotation handling.
+  - Maintained validation of `SharedPreferences` values and prevention of zero-length walls during resizing.
+  - Replaced boolean flags (_isResizingLeft, _isResizingRight, _isDraggingWall) with an InteractionState enum (none, resizingLeft, resizingRight, draggingWall, drawing) in WallDrawingController. This improves state management clarity and prevents invalid state combinations.
+  - Added Semantics widgets to toolbar buttons (delete, clear, undo, snap toggle) with appropriate labels for screen reader support, enhancing inclusivity
+  - Relative Toolbar Coordinates
+  - Prevent Zero-Length Walls
+  - SharedPreferences Validation
+  - Grouped Constants
+  - Prevent Toolbar Overlap with AppBar
+
+
+
+### Milestone 13
+- 3D View Toggle - New button in the toolbar with a 3D icon
+- Simple 3D Renderer - Custom painter that projects your 2D walls into 3D space
+- Interactive 3D View - Drag to rotate around the scene
+- Ground Grid - Visual reference grid on the floor plane

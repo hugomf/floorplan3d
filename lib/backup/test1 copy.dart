@@ -5,7 +5,7 @@ void main() {
 }
 
 class CombineWallTestApp extends StatelessWidget {
-  const CombineWallTestApp({Key? key}) : super(key: key);
+  const CombineWallTestApp({super.key});
 
   @override
   Widget build(BuildContext context) {
